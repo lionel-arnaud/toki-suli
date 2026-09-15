@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>toki suli</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #faf8f4;
+    --fg: #2a2521;
+    --card: #ffffff;
+    --border: #ddd4c8;
+    --accent: #a35b2f;
+    --muted: #7a7268;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17;
+      --fg: #ece7df;
+      --card: #262320;
+      --border: #3c362f;
+      --accent: #e0955c;
+      --muted: #a89f92;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 1.8rem; margin: 0 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 28px; }
+  .links { display: grid; gap: 12px; }
+  a.card {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    text-decoration: none;
+    color: var(--fg);
+  }
+  a.card strong { color: var(--accent); display: block; margin-bottom: 4px; }
+  a.card span { color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>toki suli</h1>
+  <p class="sub">A whistled Toki Pona synthesizer, and a learner's guide for it.</p>
+  <div class="links">
+    <a class="card" href="lesson/index.html">
+      <strong>Whistle trainer &rarr;</strong>
+      <span>Interactive quiz: locus, manner, and word recall, with pitch/manner diagrams.</span>
+    </a>
+    <a class="card" href="LEARNING.md">
+      <strong>Learning guide &rarr;</strong>
+      <span>A plain-language walkthrough of the whistled sound system, from vowels to full phrases.</span>
+    </a>
+    <a class="card" href="https://github.com/lionel-arnaud/toki-suli">
+      <strong>Source on GitHub &rarr;</strong>
+      <span>Fork of gliese1337/toki-suli.</span>
+    </a>
+  </div>
+</main>
+</body>
+</html>
