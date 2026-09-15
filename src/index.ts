@@ -2,9 +2,10 @@ import fs from 'fs';
 import WavEncoder from 'wav-encoder';
 import { SuliModel } from './suli';
 import { WasoModel } from './waso';
+import { SuliWideModel } from './suli-wide';
 import yargs from 'yargs';
 
-const models = ["suli", "waso"] as const;
+const models = ["suli", "waso", "suli-wide"] as const;
 
 function preprocess(l: string): string {
   return l.split(/\s+/g).map(w=> {
@@ -27,7 +28,7 @@ async function main(){
     fs.readFileSync(fname).toString('utf8').split('\n').map(s => s.trim()) : [fname];
 
   const sampleRate = 44100;
-  const model = argv.m === 'suli' ? SuliModel : WasoModel;
+  const model = argv.m === 'suli' ? SuliModel : argv.m === 'waso' ? WasoModel : SuliWideModel;
   console.error(`Using model "${argv.m}".`);
 
   if (argv.split) {
