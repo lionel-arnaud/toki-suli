@@ -144,13 +144,19 @@
     <div class="playbar">
       <button class="play" id="play" title="Play sound">&#9658;</button>
       <span id="promptText" style="color:var(--muted); font-size:0.9rem;"></span>
+      <button class="next" id="diagramToggle" style="margin-left:auto;">Show diagram</button>
     </div>
+    <div id="diagramBox" hidden style="text-align:center; margin: 4px 0 16px;"></div>
     <div class="choices" id="choices"></div>
     <div id="typedArea" hidden>
       <input type="text" id="typedGuess" placeholder="Type the word you heard" autocomplete="off">
+      <p class="help" style="margin-bottom:0;">Type your best guess, then press <strong>Check my guess</strong>
+        (or Enter) to see if you got it and add it to your score — or press <strong>Reveal</strong> to
+        just see the answer without guessing.</p>
     </div>
     <div class="row">
-      <button class="row" id="check" hidden>Check</button>
+      <button class="next" id="check" hidden>Check my guess</button>
+      <button class="next" id="revealWord" hidden>Reveal</button>
       <button class="next" id="next">Next &rarr;</button>
     </div>
     <div class="result" id="result"></div>
@@ -197,9 +203,12 @@ const els = {
   typedArea: document.getElementById('typedArea'),
   typedGuess: document.getElementById('typedGuess'),
   check: document.getElementById('check'),
+  revealWord: document.getElementById('revealWord'),
   next: document.getElementById('next'),
   result: document.getElementById('result'),
   score: document.getElementById('score'),
+  diagramToggle: document.getElementById('diagramToggle'),
+  diagramBox: document.getElementById('diagramBox'),
 };
 
 document.querySelectorAll('nav button').forEach(btn => {
@@ -208,7 +217,9 @@ document.querySelectorAll('nav button').forEach(btn => {
 els.play.addEventListener('click', () => playCurrent());
 els.next.addEventListener('click', () => newRound());
 els.check.addEventListener('click', () => checkTyped());
+els.revealWord.addEventListener('click', () => revealTyped());
 els.typedGuess.addEventListener('keydown', e => { if (e.key === 'Enter') checkTyped(); });
+els.diagramToggle.addEventListener('click', () => toggleDiagram());
 
 function setMode(m) {
   mode = m;
@@ -221,7 +232,9 @@ function setMode(m) {
   els.help.textContent = helpText[m];
   els.typedArea.hidden = (m !== 'word');
   els.check.hidden = (m !== 'word');
+  els.revealWord.hidden = (m !== 'word');
   els.choices.hidden = (m === 'word');
+  els.diagramToggle.hidden = (m === 'word');
   newRound();
 }
 
@@ -232,6 +245,9 @@ function newRound() {
   els.result.textContent = '';
   els.result.className = 'result';
   els.typedGuess.value = '';
+  els.diagramBox.hidden = true;
+  els.diagramBox.innerHTML = '';
+  els.diagramToggle.textContent = 'Show diagram';
   if (mode === 'word') {
     current = { word: pick(WORDS) };
     els.promptText.textContent = '';
@@ -242,6 +258,19 @@ function newRound() {
     renderChoices();
   }
   playCurrent();
+}
+
+function toggleDiagram() {
+  if (mode === 'word' || !current) return;
+  const showing = !els.diagramBox.hidden;
+  if (showing) {
+    els.diagramBox.hidden = true;
+    els.diagramToggle.textContent = 'Show diagram';
+  } else {
+    els.diagramBox.innerHTML = `<img src="diagrams/${current.syllable}.svg" width="260" alt="Pitch/manner diagram for ${current.syllable}">`;
+    els.diagramBox.hidden = false;
+    els.diagramToggle.textContent = 'Hide diagram';
+  }
 }
 
 function renderChoices() {
@@ -296,6 +325,13 @@ function checkTyped() {
     : `Not quite — it was "${current.word}".`;
   els.result.className = 'result ' + (isRight ? 'good' : 'bad');
   updateScore();
+}
+
+function revealTyped() {
+  if (answered) return;
+  answered = true;
+  els.result.textContent = `It was "${current.word}" — not scored, since you didn't guess.`;
+  els.result.className = 'result';
 }
 
 function updateScore() {
