@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>toki suli — whistle trainer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #faf8f4;
+    --fg: #2a2521;
+    --card: #ffffff;
+    --border: #ddd4c8;
+    --accent: #a35b2f;
+    --good: #3a7d44;
+    --bad: #b3432b;
+    --muted: #7a7268;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17;
+      --fg: #ece7df;
+      --card: #262320;
+      --border: #3c362f;
+      --accent: #e0955c;
+      --good: #6fbf73;
+      --bad: #e07a5f;
+      --muted: #a89f92;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+  main { max-width: 640px; margin: 0 auto; }
+  nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  nav button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  nav button[aria-current="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  section.card p.help { color: var(--muted); font-size: 0.9rem; margin-top: 0; }
+  .playbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .playbar button.play {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    width: 52px;
+    height: 52px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .choices button {
+    padding: 10px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .choices button.correct { border-color: var(--good); color: var(--good); font-weight: 600; }
+  .choices button.wrong { border-color: var(--bad); color: var(--bad); }
+  input[type=text] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 1rem;
+  }
+  .result { min-height: 1.4em; margin-top: 12px; font-size: 0.95rem; }
+  .result.good { color: var(--good); }
+  .result.bad { color: var(--bad); }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  .row button.next {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .score { color: var(--muted); font-size: 0.85rem; margin-top: 16px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>toki suli — whistle trainer</h1>
+  <p class="sub">A quiz to accompany <a href="../LEARNING.md">LEARNING.md</a>. Serve this folder's
+    parent directory with any static file server (e.g. <code>npx serve .</code> from the repo
+    root) so the audio paths resolve.</p>
+
+  <nav>
+    <button data-mode="locus">Locus</button>
+    <button data-mode="manner">Manner</button>
+    <button data-mode="word">Word recall</button>
+  </nav>
+
+  <section class="card">
+    <p class="help" id="help"></p>
+    <div class="playbar">
+      <button class="play" id="play" title="Play sound">&#9658;</button>
+      <span id="promptText" style="color:var(--muted); font-size:0.9rem;"></span>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div id="typedArea" hidden>
+      <input type="text" id="typedGuess" placeholder="Type the word you heard" autocomplete="off">
+    </div>
+    <div class="row">
+      <button class="row" id="check" hidden>Check</button>
+      <button class="next" id="next">Next &rarr;</button>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="score" id="score"></div>
+  </section>
+</main>
+
+<script>
+const CONSONANTS = [
+  { c: 't', locus: 'Sharp', manner: 'Interrupted' },
+  { c: 's', locus: 'Acute', manner: 'Interrupted' },
+  { c: 'k', locus: 'Mid',   manner: 'Interrupted' },
+  { c: 'p', locus: 'Grave', manner: 'Interrupted' },
+  { c: 'j', locus: 'Sharp', manner: 'Continuous' },
+  { c: 'l', locus: 'Acute', manner: 'Continuous' },
+  { c: 'w', locus: 'Mid',   manner: 'Continuous' },
+  { c: 'n', locus: 'Acute', manner: 'Gradual' },
+  { c: 'm', locus: 'Grave', manner: 'Gradual' },
+];
+const WORDS = [
+  'a','ala','ale','anpa','awen','ijo','ike','ilo','jaki','jan','jelo',
+  'kala','kama','kasi','ken','kili','kin','ko','kon','kule','kute',
+  'lape','laso','lawa','len','li','lili','lon','luka','lupa',
+  'ma','mama','mani','meli','mi','mije','moku','moli','mun','musi','mute',
+  'nasa','nena','ni','nimi','noka','o','oko','ona','open',
+  'pakala','pali','pan','pana','pi','pilin','pini','poka','poki','pona',
+  'sama','seli','sike','sin','sina','sona','soweli','suli','suno','suwi',
+  'tan','tawa','telo','tenpo','toki','tomo','tu','uta','walo','wan',
+  'waso','wawa','weka','wile'
+];
+
+const AUDIO_BASE = '../';
+let mode = 'locus';
+let current = null;
+let answered = false;
+let score = { right: 0, total: 0 };
+const player = new Audio();
+
+const els = {
+  help: document.getElementById('help'),
+  play: document.getElementById('play'),
+  promptText: document.getElementById('promptText'),
+  choices: document.getElementById('choices'),
+  typedArea: document.getElementById('typedArea'),
+  typedGuess: document.getElementById('typedGuess'),
+  check: document.getElementById('check'),
+  next: document.getElementById('next'),
+  result: document.getElementById('result'),
+  score: document.getElementById('score'),
+};
+
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => setMode(btn.dataset.mode));
+});
+els.play.addEventListener('click', () => playCurrent());
+els.next.addEventListener('click', () => newRound());
+els.check.addEventListener('click', () => checkTyped());
+els.typedGuess.addEventListener('keydown', e => { if (e.key === 'Enter') checkTyped(); });
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.mode === m ? 'true' : 'false'));
+  const helpText = {
+    locus: 'Listen to the consonant + "a", then pick which locus it belongs to.',
+    manner: 'Listen to the consonant + "a", then pick which manner it belongs to.',
+    word: 'Listen to a real word, then type what you think it is.',
+  };
+  els.help.textContent = helpText[m];
+  els.typedArea.hidden = (m !== 'word');
+  els.check.hidden = (m !== 'word');
+  els.choices.hidden = (m === 'word');
+  newRound();
+}
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function newRound() {
+  answered = false;
+  els.result.textContent = '';
+  els.result.className = 'result';
+  els.typedGuess.value = '';
+  if (mode === 'word') {
+    current = { word: pick(WORDS) };
+    els.promptText.textContent = '';
+  } else {
+    const entry = pick(CONSONANTS);
+    current = { syllable: entry.c + 'a', locus: entry.locus, manner: entry.manner };
+    els.promptText.textContent = '';
+    renderChoices();
+  }
+  playCurrent();
+}
+
+function renderChoices() {
+  els.choices.innerHTML = '';
+  const options = mode === 'locus'
+    ? ['Sharp', 'Acute', 'Mid', 'Grave']
+    : ['Interrupted', 'Continuous', 'Gradual'];
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.addEventListener('click', () => checkChoice(opt, btn));
+    els.choices.appendChild(btn);
+  });
+}
+
+function playCurrent() {
+  const src = mode === 'word'
+    ? AUDIO_BASE + 'lexicon/suli/' + current.word + '.wav'
+    : AUDIO_BASE + 'contexts/suli/' + current.syllable + '.wav';
+  player.src = src;
+  player.play().catch(() => {});
+}
+
+function checkChoice(choice, btn) {
+  if (answered) return;
+  answered = true;
+  const correctAnswer = mode === 'locus' ? current.locus : current.manner;
+  const isRight = choice === correctAnswer;
+  score.total++;
+  if (isRight) score.right++;
+  [...els.choices.children].forEach(b => {
+    if (b.textContent === correctAnswer) b.classList.add('correct');
+    else if (b === btn) b.classList.add('wrong');
+  });
+  els.result.textContent = isRight
+    ? `Correct — "${current.syllable}" is ${current.locus} ${current.manner}.`
+    : `Not quite — "${current.syllable}" is ${current.locus} ${current.manner}.`;
+  els.result.className = 'result ' + (isRight ? 'good' : 'bad');
+  updateScore();
+}
+
+function checkTyped() {
+  if (answered) return;
+  const guess = els.typedGuess.value.trim().toLowerCase();
+  if (!guess) return;
+  answered = true;
+  const isRight = guess === current.word;
+  score.total++;
+  if (isRight) score.right++;
+  els.result.textContent = isRight
+    ? `Correct — it was "${current.word}".`
+    : `Not quite — it was "${current.word}".`;
+  els.result.className = 'result ' + (isRight ? 'good' : 'bad');
+  updateScore();
+}
+
+function updateScore() {
+  els.score.textContent = `Score: ${score.right} / ${score.total}`;
+}
+
+setMode('locus');
+</script>
+</body>
+</html>
