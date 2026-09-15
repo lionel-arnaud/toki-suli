@@ -111,6 +111,12 @@ Continuous vs. Gradual being the harder contrast (it's why utterance-initial
 minimally distinguishable from `n`). Treat those pairs as an advanced
 listening exercise, not a first-week goal — and see the speed control below.
 
+**Try it:** the [sound explorer](lesson/explore.html) lets you click through every
+consonant (any of the 3 vowel heights) and hear + see its diagram together, plus
+row/column buttons to play, e.g., all four loci at a fixed manner back to back
+(Sharp→Acute→Mid→Grave), or all manners at a fixed locus (Interrupted→Continuous→Gradual)
+— exactly the comparisons below, but interactive.
+
 ## 3. Drills: hear the grid, row by row and column by column
 
 Each file below whistles a few consonants back-to-back (all with vowel `a`)

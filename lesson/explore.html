@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>toki suli — sound explorer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #faf8f4;
+    --fg: #2a2521;
+    --card: #ffffff;
+    --border: #ddd4c8;
+    --accent: #a35b2f;
+    --accent-bg: #f3e4d6;
+    --muted: #7a7268;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17;
+      --fg: #ece7df;
+      --card: #262320;
+      --border: #3c362f;
+      --accent: #e0955c;
+      --accent-bg: #3a2c1f;
+      --muted: #a89f92;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 56px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.95rem; }
+  a { color: var(--accent); }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .bar .group { display: flex; align-items: center; gap: 6px; }
+  .bar span.label { color: var(--muted); font-size: 0.85rem; }
+  button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  button[aria-current="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  #nowPlaying {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 108px;
+  }
+  #nowPlaying .placeholder { color: var(--muted); font-size: 0.9rem; }
+  #nowPlaying figcaption { font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+  #nowPlaying .meta { color: var(--muted); font-size: 0.85rem; }
+  figure { margin: 0; }
+
+  table.grid { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  table.grid th, table.grid td {
+    border: 1px solid var(--border);
+    padding: 6px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.grid th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+  table.grid th.rowhead { text-align: right; padding-right: 10px; }
+  .rowplay, .colplay { font-size: 0.75rem; padding: 3px 8px; }
+  td.empty { color: var(--border); }
+  td.cell button.sound {
+    width: 100%;
+    padding: 10px 4px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  td.cell button.sound[aria-current="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+  .cta {
+    margin-top: 28px;
+    text-align: center;
+  }
+  .cta a.button {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sound explorer</h1>
+  <p class="sub">Browse all 9 consonants (&times; 3 vowel heights) freely — click any sound to hear it
+    and see its diagram together. Use the row/column buttons to compare one axis at a time
+    (e.g. Interrupted vs. Continuous vs. Gradual at a fixed locus, or Sharp vs. Acute vs. Mid vs.
+    Grave at a fixed manner). See <a href="../LEARNING.md">LEARNING.md</a> for the full explanation.</p>
+
+  <div class="bar">
+    <div class="group">
+      <span class="label">Vowel:</span>
+      <span id="vowelChoices"></span>
+    </div>
+    <div class="group">
+      <span class="label">Speed:</span>
+      <span id="speedChoices"></span>
+    </div>
+  </div>
+
+  <div id="nowPlaying">
+    <span class="placeholder">Click any sound below to hear it and see its diagram here.</span>
+  </div>
+
+  <table class="grid" id="grid"></table>
+
+  <div class="cta">
+    <a class="button" href="index.html">Ready to test yourself? Go to the quiz &rarr;</a>
+  </div>
+</main>
+
+<script>
+const LOCI = ['Sharp', 'Acute', 'Mid', 'Grave'];
+const MANNERS = ['Interrupted', 'Continuous', 'Gradual'];
+// consonant per (locus, manner), or null where the combination doesn't exist
+const TABLE = {
+  Sharp: { Interrupted: 't', Continuous: 'j', Gradual: null },
+  Acute: { Interrupted: 's', Continuous: 'l', Gradual: 'n' },
+  Mid:   { Interrupted: 'k', Continuous: 'w', Gradual: null },
+  Grave: { Interrupted: 'p', Continuous: null, Gradual: 'm' },
+};
+const VOWELS = [
+  { letter: 'a', height: 'mid', label: 'a (Mid)' },
+  { letter: 'i', height: 'high', label: 'i (High)' },
+  { letter: 'o', height: 'low', label: 'o (Low)' },
+];
+const SPEEDS = [0.5, 0.75, 1, 1.25];
+
+let vowel = VOWELS[0];
+let speed = 1;
+const player = new Audio();
+player.preservesPitch = true;
+player.mozPreservesPitch = true;
+player.webkitPreservesPitch = true;
+
+const els = {
+  vowelChoices: document.getElementById('vowelChoices'),
+  speedChoices: document.getElementById('speedChoices'),
+  nowPlaying: document.getElementById('nowPlaying'),
+  grid: document.getElementById('grid'),
+};
+
+function renderVowelChoices() {
+  els.vowelChoices.innerHTML = '';
+  VOWELS.forEach(v => {
+    const btn = document.createElement('button');
+    btn.textContent = v.label;
+    if (v === vowel) btn.setAttribute('aria-current', 'true');
+    btn.addEventListener('click', () => { vowel = v; renderVowelChoices(); renderGrid(); });
+    els.vowelChoices.appendChild(btn);
+  });
+}
+
+function renderSpeedChoices() {
+  els.speedChoices.innerHTML = '';
+  SPEEDS.forEach(s => {
+    const btn = document.createElement('button');
+    btn.textContent = s + 'x';
+    if (s === speed) btn.setAttribute('aria-current', 'true');
+    btn.addEventListener('click', () => { speed = s; player.playbackRate = speed; renderSpeedChoices(); });
+    els.speedChoices.appendChild(btn);
+  });
+}
+
+function clearCurrentMark() {
+  document.querySelectorAll('button.sound[aria-current="true"]').forEach(b => b.removeAttribute('aria-current'));
+}
+
+function showDiagram(c, locus, manner) {
+  const syll = c + vowel.letter;
+  els.nowPlaying.innerHTML = `
+    <figure>
+      <img src="diagrams/${c}_${vowel.height}.svg" width="220" alt="Diagram for ${syll}">
+      <figcaption>${syll} <span class="meta">— ${locus} ${manner}</span></figcaption>
+    </figure>`;
+}
+
+function playSound(c, locus, manner, btn) {
+  return new Promise(resolve => {
+    clearCurrentMark();
+    if (btn) btn.setAttribute('aria-current', 'true');
+    showDiagram(c, locus, manner);
+    player.src = `../contexts/suli/${c}${vowel.letter}.wav`;
+    player.playbackRate = speed;
+    player.onended = resolve;
+    player.play().catch(resolve);
+  });
+}
+
+async function playSequence(cells) {
+  for (const { c, locus, manner, btn } of cells) {
+    await playSound(c, locus, manner, btn);
+  }
+}
+
+function renderGrid() {
+  els.grid.innerHTML = '';
+  const thead = document.createElement('tr');
+  thead.appendChild(document.createElement('th'));
+  MANNERS.forEach(m => {
+    const th = document.createElement('th');
+    const btn = document.createElement('button');
+    btn.className = 'colplay';
+    btn.textContent = '▶ ' + m;
+    btn.title = `Play all loci at ${m} manner, in order`;
+    btn.addEventListener('click', () => {
+      const cells = LOCI.filter(l => TABLE[l][m]).map(l => {
+        const c = TABLE[l][m];
+        return { c, locus: l, manner: m, btn: document.getElementById(`cell-${l}-${m}`) };
+      });
+      playSequence(cells);
+    });
+    th.appendChild(document.createTextNode(m + ' '));
+    th.appendChild(document.createElement('br'));
+    th.appendChild(btn);
+    thead.appendChild(th);
+  });
+  els.grid.appendChild(thead);
+
+  LOCI.forEach(locus => {
+    const tr = document.createElement('tr');
+    const rowHead = document.createElement('th');
+    rowHead.className = 'rowhead';
+    const rbtn = document.createElement('button');
+    rbtn.className = 'rowplay';
+    rbtn.textContent = '▶ ' + locus;
+    rbtn.title = `Play all manners at ${locus} locus, in order`;
+    rbtn.addEventListener('click', () => {
+      const cells = MANNERS.filter(m => TABLE[locus][m]).map(m => {
+        const c = TABLE[locus][m];
+        return { c, locus, manner: m, btn: document.getElementById(`cell-${locus}-${m}`) };
+      });
+      playSequence(cells);
+    });
+    rowHead.appendChild(rbtn);
+    tr.appendChild(rowHead);
+
+    MANNERS.forEach(manner => {
+      const td = document.createElement('td');
+      const c = TABLE[locus][manner];
+      if (!c) {
+        td.className = 'empty';
+        td.textContent = '—';
+      } else {
+        td.className = 'cell';
+        const btn = document.createElement('button');
+        btn.className = 'sound';
+        btn.id = `cell-${locus}-${manner}`;
+        btn.textContent = c + vowel.letter;
+        btn.addEventListener('click', () => playSound(c, locus, manner, btn));
+        td.appendChild(btn);
+      }
+      tr.appendChild(td);
+    });
+    els.grid.appendChild(tr);
+  });
+}
+
+renderVowelChoices();
+renderSpeedChoices();
+renderGrid();
+</script>
+</body>
+</html>
