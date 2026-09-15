@@ -24,6 +24,22 @@ const LOCUS_TARGET_Y = {
   Grave: 94,
 };
 
+// How much of the pre-vowel timeline the manner's transition occupies, based
+// on the synthesizer's actual segment durations (src/suli.ts): Interrupted
+// I_TRANS=50ms (fast), Gradual G_TRANS=95ms, Continuous C_TRANS=170ms
+// (slowest). In an isolated syllable (no preceding sound — what every
+// trainer/explorer sound is), Interrupted's amplitude is already at full
+// volume from the very start (only pitch moves); Continuous and Gradual
+// both rise smoothly from silence, Continuous just taking much longer to do
+// it. There is no mid-syllable silence GAP in this position — that only
+// happens between two sounds in a row (e.g. mid-phrase), which these
+// diagrams intentionally don't depict.
+const MANNER_RAMP_FRACTION = {
+  Interrupted: 0.18,
+  Gradual: 0.45,
+  Continuous: 0.85,
+};
+
 const STYLE = `<style>
   .fg { stroke: #2a2521; }
   .fgfill { fill: #2a2521; }
@@ -65,44 +81,50 @@ function vowelLine(y, x0 = X_JOINT_END, x1 = X_END) {
   return `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" class="fg" stroke-width="3" stroke-linecap="round"/>`;
 }
 
-// The consonant glide + manner-specific joint, ending where the vowel line begins.
+// A small amplitude/volume ramp icon in the corner: how sharply the sound
+// reaches full volume. Interrupted = an instant step (already loud at time
+// zero). Continuous/Gradual = a rising ramp, wide (slow) or narrow (fast).
+function attackIcon(manner) {
+  const bx = X_END - 40, by = 4, bw = 34, bh = 12;
+  const frac = MANNER_RAMP_FRACTION[manner];
+  const baseline = by + bh;
+  let path;
+  if (manner === "Interrupted") {
+    // Sharp right angle: silent, then instantly at full height.
+    path = `M ${bx} ${baseline} L ${bx} ${by} L ${bx + bw} ${by}`;
+  } else {
+    const riseX = bx + bw * frac;
+    path = `M ${bx} ${baseline} L ${riseX} ${by} L ${bx + bw} ${by}`;
+  }
+  return `<path d="${path}" fill="none" class="fg" stroke-width="2" stroke-linejoin="round"/>` +
+    `<line x1="${bx}" y1="${baseline}" x2="${bx + bw}" y2="${baseline}" class="guide" stroke-width="1"/>`;
+}
+
+// The consonant glide, ending where the vowel line begins. Manner controls
+// how much of the pre-vowel span the pitch+volume transition takes: a short
+// steep corner for Interrupted, a longer gentle diagonal for Continuous, in
+// between for Gradual. See MANNER_RAMP_FRACTION above for why.
 function consonantGlyph(locus, manner, vowelY) {
   const targetY = LOCUS_TARGET_Y[locus];
-  let s = "";
+  let s = attackIcon(manner);
 
   if (targetY === null) {
     // Mid locus: no pitch motion, just an amplitude pulse marker on the vowel pitch.
-    s += `<circle cx="${X_START + 6}" cy="${vowelY}" r="4" fill="none" class="fg" stroke-width="2.5"/>`;
-  } else {
-    const dir = targetY < vowelY ? "up" : "down";
-    const marker = dir === "up" ? "url(#arrUp)" : "url(#arrDown)";
-    s += `<line x1="${X_START}" y1="${targetY}" x2="${X_START}" y2="${targetY}" class="fg" marker-start="${marker}"/>`;
-    s += `<line x1="${X_START + 2}" y1="${targetY}" x2="${X_START + 20}" y2="${targetY}" class="fg" stroke-width="2.5"/>`;
+    s += `<circle cx="${X_JOINT_END - 14}" cy="${vowelY}" r="4" fill="none" class="fg" stroke-width="2.5"/>`;
+    s += `<line x1="${X_JOINT_END - 14}" y1="${vowelY}" x2="${X_JOINT_END}" y2="${vowelY}" class="fg" stroke-width="2.5"/>`;
+    return s;
   }
 
-  const glideStartX = targetY === null ? X_START + 10 : X_START + 20;
-  const glideStartY = targetY === null ? vowelY : targetY;
-
-  if (manner === "Continuous") {
-    s += `<path d="M ${glideStartX} ${glideStartY} Q ${(glideStartX + X_JOINT_END) / 2} ${vowelY} ${X_JOINT_END} ${vowelY}" fill="none" class="fg" stroke-width="2.5"/>`;
-  } else if (manner === "Interrupted") {
-    const cutX = glideStartX + (X_JOINT_END - glideStartX) * 0.55;
-    const cutY = (glideStartY + vowelY) / 2;
-    s += `<path d="M ${glideStartX} ${glideStartY} L ${cutX} ${cutY}" fill="none" class="fg" stroke-width="2.5"/>`;
-    s += `<line x1="${cutX}" y1="${cutY - 6}" x2="${cutX}" y2="${cutY + 6}" class="fg" stroke-width="1.5"/>`;
-    s += `<line x1="${X_JOINT_END}" y1="${vowelY - 6}" x2="${X_JOINT_END}" y2="${vowelY + 6}" class="fg" stroke-width="1.5"/>`;
-  } else if (manner === "Gradual") {
-    const steps = 6;
-    for (let i = 0; i < steps; i++) {
-      const t0 = i / steps, t1 = (i + 0.35) / steps;
-      const x0 = glideStartX + (X_JOINT_END - 4 - glideStartX) * t0;
-      const x1 = glideStartX + (X_JOINT_END - 4 - glideStartX) * t1;
-      const y0 = glideStartY + (vowelY - glideStartY) * t0;
-      const y1 = glideStartY + (vowelY - glideStartY) * t1;
-      const w = 2.5 - (i / steps) * 1.7;
-      s += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" class="fg" stroke-width="${w.toFixed(1)}" stroke-linecap="round"/>`;
-    }
-  }
+  const dir = targetY < vowelY ? "up" : "down";
+  const marker = dir === "up" ? "url(#arrUp)" : "url(#arrDown)";
+  const frac = MANNER_RAMP_FRACTION[manner];
+  const glideStartX = X_JOINT_END - (X_JOINT_END - (X_START + 30)) * frac;
+  // A held segment at the locus pitch (flat), then the glide into the vowel —
+  // short and steep for Interrupted (a "sharp angle"), long and gentle for
+  // Continuous ("slow gradual change"), in between for Gradual.
+  s += `<line x1="${X_START + 30}" y1="${targetY}" x2="${X_START + 30}" y2="${targetY}" class="fg" marker-start="${marker}"/>`;
+  s += `<line x1="${X_START + 32}" y1="${targetY}" x2="${glideStartX}" y2="${targetY}" class="fg" stroke-width="2.5"/>`;
+  s += `<path d="M ${glideStartX} ${targetY} Q ${(glideStartX + X_JOINT_END) / 2} ${vowelY} ${X_JOINT_END} ${vowelY}" fill="none" class="fg" stroke-width="2.5"/>`;
   return s;
 }
 
@@ -162,21 +184,17 @@ for (const { c, locus, manner } of CONSONANTS) {
 // --- Legend ---------------------------------------------------------------
 const legendBody = `
   ${guides()}
-  <text x="14" y="14" font-size="9" class="muted">dashed lines = the 3 whistled vowel pitches</text>
-  <line x1="14" y1="30" x2="70" y2="30" class="fg" stroke-width="2.5"/>
-  <text x="76" y="33" font-size="9" class="fgfill">solid = sound present (vowel, or Continuous consonant)</text>
-  <line x1="14" y1="46" x2="45" y2="46" class="fg" stroke-width="1.5"/>
-  <line x1="45" y1="40" x2="45" y2="52" class="fg" stroke-width="1.5"/>
-  <line x1="65" y1="40" x2="65" y2="52" class="fg" stroke-width="1.5"/>
-  <text x="76" y="49" font-size="9" class="fgfill">gap = Interrupted (abrupt full silence)</text>
-  <line x1="14" y1="60" x2="20" y2="61" class="fg" stroke-width="2.2" stroke-linecap="round"/>
-  <line x1="26" y1="62" x2="31" y2="63" class="fg" stroke-width="1.6" stroke-linecap="round"/>
-  <line x1="37" y1="63" x2="41" y2="64" class="fg" stroke-width="1" stroke-linecap="round"/>
-  <text x="76" y="65" font-size="9" class="fgfill">fading dots = Gradual (smooth fade to silence)</text>
-  <line x1="14" y1="78" x2="14" y2="78" class="fg" marker-start="url(#arrUp)"/>
-  <text x="30" y="81" font-size="9" class="fgfill">arrow up/down = pitch glide direction &amp; distance (locus)</text>
-  <circle cx="16" cy="94" r="4" fill="none" class="fg" stroke-width="2"/>
-  <text x="30" y="97" font-size="9" class="fgfill">circle = Mid locus (no pitch motion, just a volume pulse)</text>
+  <text x="14" y="12" font-size="9" class="muted">dashed lines = the 3 whistled vowel pitches</text>
+  <line x1="14" y1="26" x2="14" y2="26" class="fg" marker-start="url(#arrUp)"/>
+  <text x="30" y="29" font-size="9" class="fgfill">arrow up/down = pitch glide direction &amp; distance (locus)</text>
+  <circle cx="16" cy="42" r="4" fill="none" class="fg" stroke-width="2"/>
+  <text x="30" y="45" font-size="9" class="fgfill">circle = Mid locus (no pitch motion, just a volume pulse)</text>
+  <path d="M 10 62 L 10 54 L 30 54" fill="none" class="fg" stroke-width="2" stroke-linejoin="round"/>
+  <text x="36" y="61" font-size="9" class="fgfill">sharp corner = Interrupted (snaps to full pitch/volume fast, ~50ms)</text>
+  <path d="M 10 78 L 22 70 L 30 70" fill="none" class="fg" stroke-width="2" stroke-linejoin="round"/>
+  <text x="36" y="77" font-size="9" class="fgfill">medium diagonal = Gradual (~95ms)</text>
+  <path d="M 10 94 L 28 86 L 30 86" fill="none" class="fg" stroke-width="2" stroke-linejoin="round"/>
+  <text x="36" y="93" font-size="9" class="fgfill">long, gentle diagonal = Continuous (slowest, ~170ms)</text>
 `;
 writeSVG("legend", `${svgOpen()}${arrowMarkerDefs()}${legendBody}</svg>`);
 
