@@ -146,6 +146,10 @@
       <span id="promptText" style="color:var(--muted); font-size:0.9rem;"></span>
       <button class="next" id="diagramToggle" style="margin-left:auto;">Show diagram</button>
     </div>
+    <div class="playbar" style="margin-top:-8px;">
+      <span style="color:var(--muted); font-size:0.85rem;">Speed:</span>
+      <div class="choices" id="speedChoices" style="grid-template-columns:repeat(4,auto); gap:6px; margin:0;"></div>
+    </div>
     <div id="diagramBox" hidden style="text-align:center; margin: 4px 0 16px;"></div>
     <div class="choices" id="choices"></div>
     <div id="typedArea" hidden>
@@ -189,17 +193,24 @@ const WORDS = [
 ];
 
 const AUDIO_BASE = '../';
+const SPEEDS = [0.5, 0.75, 1, 1.25];
+const VOWEL_HEIGHT = { a: 'mid', e: 'high', i: 'high', o: 'low', u: 'low' };
 let mode = 'locus';
 let current = null;
 let answered = false;
+let speed = 1;
 let score = { right: 0, total: 0 };
 const player = new Audio();
+player.preservesPitch = true;
+player.mozPreservesPitch = true;
+player.webkitPreservesPitch = true;
 
 const els = {
   help: document.getElementById('help'),
   play: document.getElementById('play'),
   promptText: document.getElementById('promptText'),
   choices: document.getElementById('choices'),
+  speedChoices: document.getElementById('speedChoices'),
   typedArea: document.getElementById('typedArea'),
   typedGuess: document.getElementById('typedGuess'),
   check: document.getElementById('check'),
@@ -221,6 +232,47 @@ els.revealWord.addEventListener('click', () => revealTyped());
 els.typedGuess.addEventListener('keydown', e => { if (e.key === 'Enter') checkTyped(); });
 els.diagramToggle.addEventListener('click', () => toggleDiagram());
 
+function renderSpeedChoices() {
+  els.speedChoices.innerHTML = '';
+  SPEEDS.forEach(s => {
+    const btn = document.createElement('button');
+    btn.textContent = s + 'x';
+    if (s === speed) btn.setAttribute('aria-current', 'true');
+    btn.addEventListener('click', () => {
+      speed = s;
+      player.playbackRate = speed;
+      renderSpeedChoices();
+    });
+    els.speedChoices.appendChild(btn);
+  });
+}
+renderSpeedChoices();
+
+// --- Toki Pona syllabifier: splits a word into (C)V(n) syllables, matching
+// the standard rule that "n" is a coda only when NOT followed by a vowel. ---
+function syllabify(word) {
+  const consonants = 'jklmnpstw';
+  const vowels = 'aeiou';
+  const sylls = [];
+  let i = 0;
+  while (i < word.length) {
+    let c = null, v = null, coda = false;
+    if (consonants.includes(word[i])) { c = word[i]; i++; }
+    if (vowels.includes(word[i])) { v = word[i]; i++; }
+    else break; // malformed input, stop rather than loop forever
+    if (word[i] === 'n' && (i + 1 >= word.length || !vowels.includes(word[i + 1]))) {
+      coda = true; i++;
+    }
+    sylls.push({ c, v, coda, text: (c || '') + v + (coda ? 'n' : '') });
+  }
+  return sylls;
+}
+
+function syllableImage(syll) {
+  const height = VOWEL_HEIGHT[syll.v];
+  return syll.c ? `diagrams/${syll.c}_${height}.svg` : `diagrams/vowel_${height}.svg`;
+}
+
 function setMode(m) {
   mode = m;
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.mode === m ? 'true' : 'false'));
@@ -234,7 +286,6 @@ function setMode(m) {
   els.check.hidden = (m !== 'word');
   els.revealWord.hidden = (m !== 'word');
   els.choices.hidden = (m === 'word');
-  els.diagramToggle.hidden = (m === 'word');
   newRound();
 }
 
@@ -249,11 +300,12 @@ function newRound() {
   els.diagramBox.innerHTML = '';
   els.diagramToggle.textContent = 'Show diagram';
   if (mode === 'word') {
-    current = { word: pick(WORDS) };
+    const word = pick(WORDS);
+    current = { word, syllables: syllabify(word) };
     els.promptText.textContent = '';
   } else {
     const entry = pick(CONSONANTS);
-    current = { syllable: entry.c + 'a', locus: entry.locus, manner: entry.manner };
+    current = { c: entry.c, syllable: entry.c + 'a', locus: entry.locus, manner: entry.manner };
     els.promptText.textContent = '';
     renderChoices();
   }
@@ -261,16 +313,27 @@ function newRound() {
 }
 
 function toggleDiagram() {
-  if (mode === 'word' || !current) return;
+  if (!current) return;
   const showing = !els.diagramBox.hidden;
   if (showing) {
     els.diagramBox.hidden = true;
     els.diagramToggle.textContent = 'Show diagram';
-  } else {
-    els.diagramBox.innerHTML = `<img src="diagrams/${current.syllable}.svg" width="260" alt="Pitch/manner diagram for ${current.syllable}">`;
-    els.diagramBox.hidden = false;
-    els.diagramToggle.textContent = 'Hide diagram';
+    return;
   }
+  if (mode === 'word') {
+    els.diagramBox.innerHTML = current.syllables.map(syll => `
+      <figure style="display:inline-block; margin:0 8px 8px;">
+        <img src="${syllableImage(syll)}" width="150" alt="Diagram for syllable ${syll.text}">
+        <figcaption style="font-size:0.85rem; color:var(--muted);">${syll.text}</figcaption>
+      </figure>`).join('');
+    if (current.syllables.some(s => s.coda)) {
+      els.diagramBox.innerHTML += `<p class="help" style="margin:4px 0 0;">Note: the diagrams above show each syllable's onset consonant + vowel; a trailing "n" (shown in the subtitle) isn't drawn separately.</p>`;
+    }
+  } else {
+    els.diagramBox.innerHTML = `<img src="diagrams/${current.c}_mid.svg" width="260" alt="Pitch/manner diagram for ${current.syllable}">`;
+  }
+  els.diagramBox.hidden = false;
+  els.diagramToggle.textContent = 'Hide diagram';
 }
 
 function renderChoices() {
@@ -291,6 +354,7 @@ function playCurrent() {
     ? AUDIO_BASE + 'lexicon/suli/' + current.word + '.wav'
     : AUDIO_BASE + 'contexts/suli/' + current.syllable + '.wav';
   player.src = src;
+  player.playbackRate = speed;
   player.play().catch(() => {});
 }
 

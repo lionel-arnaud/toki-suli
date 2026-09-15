@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100" width="220" height="100" font-family="-apple-system,Helvetica,Arial,sans-serif"><defs>
-    <marker id="arrUp" markerWidth="8" markerHeight="8" refX="4" refY="0" orient="auto">
-      <path d="M0,6 L4,0 L8,6 Z" fill="#2a2521"/>
-    </marker>
-    <marker id="arrDown" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto">
-      <path d="M0,0 L8,0 L4,6 Z" fill="#2a2521"/>
-    </marker>
-  </defs><rect width="220" height="100" fill="none"/><line x1="4" y1="20" x2="210" y2="20" stroke="#b8ac9a" stroke-width="1" stroke-dasharray="2 3"/><text x="0" y="23" font-size="8" fill="#7a7268">H</text><line x1="4" y1="50" x2="210" y2="50" stroke="#b8ac9a" stroke-width="1" stroke-dasharray="2 3"/><text x="0" y="53" font-size="8" fill="#7a7268">M</text><line x1="4" y1="80" x2="210" y2="80" stroke="#b8ac9a" stroke-width="1" stroke-dasharray="2 3"/><text x="0" y="83" font-size="8" fill="#7a7268">L</text><circle cx="16" cy="50" r="4" fill="none" stroke="#2a2521" stroke-width="2.5"/><path d="M 20 50 Q 55 50 90 50" fill="none" stroke="#2a2521" stroke-width="2.5"/><line x1="90" y1="50" x2="210" y2="50" stroke="#2a2521" stroke-width="3" stroke-linecap="round"/><text x="210" y="96" font-size="11" fill="#2a2521" text-anchor="end" font-weight="600">wa — Mid Continuous</text></svg>
