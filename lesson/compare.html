@@ -71,8 +71,7 @@
   table.grid th, table.grid td { border: 1px solid var(--border); padding: 8px 6px; text-align: center; vertical-align: middle; }
   table.grid th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
   td.empty { color: var(--border); }
-  td.cell { display: flex; flex-direction: column; gap: 4px; align-items: center; }
-  td.cell .pair { display: flex; gap: 6px; }
+  td.cell .stack { display: flex; flex-direction: column; gap: 4px; align-items: center; }
   td.cell button.sound { padding: 8px 10px; font-size: 0.95rem; font-weight: 600; min-width: 54px; }
   td.cell button.sound.orig { border-color: var(--muted); }
   td.cell button.sound.wide { border-color: var(--accent2); color: var(--accent2); }
@@ -185,26 +184,32 @@ function renderGrid() {
 
     const origTd = document.createElement('td');
     origTd.className = 'cell';
+    const origStack = document.createElement('div');
+    origStack.className = 'stack';
     const origBtn = document.createElement('button');
     origBtn.className = 'sound orig';
     origBtn.textContent = syll;
     origBtn.addEventListener('click', () => play('suli', c, origBtn));
-    origTd.appendChild(origBtn);
+    origStack.appendChild(origBtn);
     if (isFlat) {
       const flag = document.createElement('span');
       flag.className = 'flat-flag';
       flag.textContent = 'FLAT — no pitch movement';
-      origTd.appendChild(flag);
+      origStack.appendChild(flag);
     }
+    origTd.appendChild(origStack);
     tr.appendChild(origTd);
 
     const wideTd = document.createElement('td');
     wideTd.className = 'cell';
+    const wideStack = document.createElement('div');
+    wideStack.className = 'stack';
     const wideBtn = document.createElement('button');
     wideBtn.className = 'sound wide';
     wideBtn.textContent = syll;
     wideBtn.addEventListener('click', () => play('suli-wide', c, wideBtn));
-    wideTd.appendChild(wideBtn);
+    wideStack.appendChild(wideBtn);
+    wideTd.appendChild(wideStack);
     tr.appendChild(wideTd);
 
     els.grid.appendChild(tr);
